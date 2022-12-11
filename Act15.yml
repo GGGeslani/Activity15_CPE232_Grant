@@ -1,0 +1,22 @@
+---
+- hosts: Control_Node
+  become: true
+  pre_tasks:
+
+  - name: Dpkg Configure of Ubuntu server
+    shell: 
+      dpkg --configure -a
+    when: ansible_distribution == "Ubuntu"
+
+  - name: Update the Ubuntu server
+    apt:
+      update_cache: yes
+      upgrade: yes
+    when: ansible_distribution == "Ubuntu"
+
+- hosts: Control_Node
+  become: true
+  roles:
+    - Neutron
+    - Horizon
+    - Cinder

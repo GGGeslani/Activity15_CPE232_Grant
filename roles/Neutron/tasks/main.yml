@@ -1,0 +1,246 @@
+#Neutron Install and Configure
+#Network Option 1
+
+- name: Install Neutron Packages
+  apt:
+    name:
+      - neutron-server
+      - neutron-plugin-ml2
+      - neutron-openvswitch-agent
+      - neutron-dhcp-agent
+      - neutron-metadata-agent
+    state: latest
+
+- name: Editing Neutron [database] In Configuration File
+  lineinfile:
+        dest: /etc/neutron/neutron.conf
+        insertafter: '\[database\]'
+        regexp: '^connection = mysql+pymysql://neutron:NEUTRON_DBPASS@controller/neutron'
+        line: 'connection = mysql+pymysql://neutron:pass123@controller/neutron'
+        state: present
+        backup: yes
+        backrefs: yes
+
+- name: Editing Neutron [DEFAULT] In Configuration File 1
+  lineinfile:
+        dest: /etc/neutron/neutron.conf
+        insertafter: '\[DEFAULT\]'
+        line: 'core_plugin = ml2'
+        state: present
+        backup: yes
+
+- name: Editing Neutron [DEFAULT] In Configuration File 2
+  lineinfile:
+        dest: /etc/neutron/neutron.conf
+        insertafter: '\[DEFAULT\]'
+        regexp: '^service_plugins ='
+        state: absent
+        backup: yes
+        backrefs: yes
+
+- name: Editing Neutron [DEFAULT] In Configuration File 3
+  lineinfile:
+        dest: /etc/neutron/neutron.conf
+        insertafter: '\[DEFAULT\]'
+        regexp: '^transport_url = rabbit://openstack:RABBIT_PASS@controller'
+        line: 'transport_url = rabbit://openstack:pass123@controller'
+        state: present
+        backup: yes
+        backrefs: yes
+
+- name: Editing Neutron [DEFAULT] In Configuration File 4
+  lineinfile:
+        dest: /etc/neutron/neutron.conf
+        insertafter: '\[DEFAULT\]'
+        line: 'auth_strategy = keystone'
+        state: present
+        backup: yes
+
+- name: Editing Neutron [keystone_authtoken] In Configuration File
+  lineinfile:
+        dest: /etc/neutron/neutron.conf
+        insertafter: '\[keystone_authtoken\]'
+        line: "{{ item }}"
+        state: present
+        backup: yes
+  with_items:
+        - www_authenticate_uri = http://controller:5000
+        - auth_url = http://controller:5000
+        - memcached_servers = controller:11211
+        - auth_type = password
+        - project_domain_name = Default
+        - user_domain_name = Default
+        - project_name = service
+        - username = neutron
+        - password = pass123
+
+- name: Editing Neutron [DEFAULT] In Configuration File 5
+  lineinfile:
+        dest: /etc/neutron/neutron.conf
+        insertafter: '\[DEFAULT\]'
+        line: "{{ item }}"
+        state: present
+        backup: yes
+  with_items:
+        - notify_nova_on_port_status_changes = true
+        - notify_nova_on_port_data_changes = true
+
+- name: Editing Neutron [nova] In Configuration File
+  lineinfile:
+        dest: /etc/neutron/neutron.conf
+        insertafter: '\[nova\]'
+        line: "{{ item }}"
+        state: present
+        backup: yes
+  with_items:
+        - auth_url = http://controller:5000
+        - auth_type = password
+        - project_domain_name = Default
+        - user_domain_name = Default
+        - region_name = RegionOne
+        - project_name = service
+        - username = nova
+        - password = pass123
+
+- name: Editing Neutron [oslo_concurrency] In Configuration File
+  lineinfile:
+        dest: /etc/neutron/neutron.conf
+        insertafter: '\[oslo_concurrency\]'
+        line: 'lock_path = /var/lib/neutron/tmp'
+        state: present
+        backup: yes
+
+- name: Editing Neutron [ml2] In Configuration File 1
+  lineinfile:
+      dest: /etc/neutron/plugins/ml2/ml2_conf.ini
+      insertafter: '\[ml2\]'
+      line: 'type_drivers = flat,vlan'
+      state: present
+      backup: yes
+
+- name: Editing Neutron [ml2] In Configuration File 2
+  lineinfile:
+      dest: /etc/neutron/plugins/ml2/ml2_conf.ini
+      insertafter: '\[ml2\]'
+      regexp: '^tenant_network_types ='
+      state: absent
+      backup: yes
+      backrefs: yes
+
+- name: Editing Neutron [ml2] In Configuration File 3
+  lineinfile:
+      dest: /etc/neutron/plugins/ml2/ml2_conf.ini
+      insertafter: '\[ml2\]'
+      line: "{{ item }}"
+      state: present
+      backup: yes
+  with_items:
+        - mechanism_drivers = openvswitch
+        - extension_drivers = port_security
+
+- name: Editing Neutron [ml2_type_flat] In Configuration File
+  lineinfile:
+      dest: /etc/neutron/plugins/ml2/ml2_conf.ini
+      insertafter: '\[ml2_type_flat\]'
+      line: 'flat_networks = provider'
+      state: present
+      backup: yes
+
+- name: Editing Neutron [ovs] In Configuration File
+  lineinfile:
+      dest: /etc/neutron/plugins/ml2/openvswitch_agent.ini
+      insertafter: '\[ovs\]'
+      regexp: '^bridge_mappings = provider:PROVIDER_INTERFACE_NAME'
+      line: 'bridge_mappings = provider:WorkStation'
+      state: present
+      backup: yes
+      backrefs: yes
+
+- name: Editing Neutron [securitygroup] In Configuration File
+  lineinfile:
+      dest: /etc/neutron/plugins/ml2/openvswitch_agent.ini
+      insertafter: '\[securitygroup\]'
+      line: "{{ item }}"
+      state: present
+      backup: yes
+  with_items:
+        - enable_security_group = true
+        - firewall_driver = openvswitch
+       #- firewall_driver = iptables_hybrid
+
+- name: Editing Neutron [DEFAULT] In Configuration File
+  lineinfile:
+        dest: /etc/neutron/dhcp_agent.ini
+        insertafter: '\[DEFAULT\]'
+        line: "{{ item }}"
+        state: present
+        backup: yes
+  with_items:
+        - interface_driver = openvswitch
+        - dhcp_driver = neutron.agent.linux.dhcp.Dnsmasq
+        - enable_isolated_metadata = true
+
+#Configuring The Metadata Agent
+
+- name: Editing Neutron [DEFAULT] In Configuration File 1
+  lineinfile:
+        dest: /etc/neutron/metadata_agent.ini
+        insertafter: '\[DEFAULT\]'
+        line: 'nova_metadata_host = controller'
+        state: present
+        backup: yes
+
+- name: Editing Neutron [DEFAULT] In Configuration File 2
+  lineinfile:
+        dest: /etc/neutron/metadata_agent.ini
+        insertafter: '\[DEFAULT\]'
+        regexp: '^metadata_proxy_shared_secret = METADATA_SECRET'
+        line: 'metadata_proxy_shared_secret = pass123'
+        state: present
+        backup: yes
+        backrefs: yes
+
+- name: Editing Nova [neutron] In Configuration File
+  lineinfile:
+        dest: /etc/nova/nova.conf
+        insertafter: '\[neutron\]'
+        line: "{{ item }}"
+        state: present
+        backup: yes
+  with_items:
+        - auth_url = http://controller:5000
+        - auth_type = password
+        - project_domain_name = Default
+        - user_domain_name = Default
+        - region_name = RegionOne
+        - project_name = service
+        - username = neutron
+        - password = pass123
+        - service_metadata_proxy = true
+        - metadata_proxy_shared_secret = pass123
+
+#- name: Populate The Database
+  #shell: 
+    #sudo neutron-db-manage --config-file /etc/neutron/neutron.conf \
+ # --config-file /etc/neutron/plugins/ml2/ml2_conf.ini upgrade head
+
+- name: Restart Compute API Service
+  shell: 
+    service nova-api restart
+
+- name: Restart The Networking Services 1
+  shell: 
+    service neutron-server restart
+
+- name: Restart The Networking Services 2
+  shell: 
+    service neutron-openvswitch-agent restart
+
+- name: Restart The Networking Services 3
+  shell: 
+    service neutron-dhcp-agent restart
+
+- name: Restart The Networking Services 4
+  shell: 
+    service neutron-metadata-agent restart
+

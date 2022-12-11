@@ -1,0 +1,94 @@
+#Cinder Install and Configure
+
+- name: Installing Cinder Packages
+  apt:
+    name:
+      - cinder-api
+      - cinder-scheduler
+    state: latest
+
+- name: Editing Cinder [database] In Configuration File
+  lineinfile:
+        dest: /etc/cinder/cinder.conf
+        insertafter: '\[database\]'
+        regexp: '^connection = mysql+pymysql://cinder:CINDER_DBPASS@controller/cinder'
+        line: 'connection = mysql+pymysql://cinder:pass123@controller/cinder'
+        state: present
+        backup: yes
+        backrefs: yes
+
+- name: Editing Cinder [DEFAULT] In Configuration File 1
+  lineinfile:
+        dest: /etc/cinder/cinder.conf
+        insertafter: '\[DEFAULT\]'
+        regexp: '^transport_url = rabbit://openstack:RABBIT_PASS@controller'
+        line: 'transport_url = rabbit://openstack:pass123@controller'
+        state: present
+        backup: yes
+        backrefs: yes
+
+- name: Editing Cinder [DEFAULT] In Configuration File 2
+  lineinfile:
+        dest: /etc/cinder/cinder.conf
+        insertafter: '\[DEFAULT\]'
+        line: 'auth_strategy = keystone'
+        state: present
+        backup: yes
+
+- name: Editing Cinder [keystone_authtoken] In Configuration File
+  lineinfile:
+        dest: /etc/cinder/cinder.conf
+        insertafter: '\[keystone_authtoken\]'
+        line: '{{ item }}'
+        state: present
+        backup: yes
+  with_items:
+        - www_authenticate_uri = http://controller:5000
+        - auth_url = http://controller:5000
+        - memcached_servers = controller:11211
+        - auth_type = password
+        - project_domain_name = default
+        - user_domain_name = default
+        - project_name = service
+        - username = cinder
+        - password = pass123
+
+- name: Editing Cinder [DEFAULT] In Configuration File 3
+  lineinfile:
+        dest: /etc/cinder/cinder.conf
+        insertafter: '\[DEFAULT\]'
+        line: 'my_ip = 192.168.52.103'
+        state: present
+        backup: yes
+
+- name: Editing Cinder [oslo_concurrency] In Configuration File
+  lineinfile:
+        dest: /etc/cinder/cinder.conf
+        insertafter: '\[oslo_concurrency\]'
+        line: 'lock_path = /var/lib/cinder/tmp'
+        state: present
+        backup: yes
+
+- name: Populate The Block Storage Database
+  shell: 
+    sudo cinder-manage db sync
+
+- name: Edit Nova [cinder] In Configuration File
+  lineinfile:
+        dest: /etc/nova/nova.conf
+        insertafter: '\[cinder\]'
+        line: 'os_region_name = RegionOne'
+        state: present
+        backup: yes
+
+- name: Restart The Compute API Service
+  shell: 
+    service nova-api restart
+
+- name: Restart The Block Storage Service 1
+  shell: 
+    service cinder-scheduler restart
+
+- name: Restart The Block Storage Service 2
+  shell: 
+    service apache2 restart
